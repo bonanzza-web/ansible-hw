@@ -1,0 +1,13 @@
+events {}
+
+http {
+  server {
+    listen 80;
+    server_name your_domain;
+
+    location / {
+      root /var/www/html/lighthouse;
+      index index.html;
+    }
+  }
+}
