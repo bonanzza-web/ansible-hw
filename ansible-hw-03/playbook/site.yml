@@ -87,18 +87,15 @@
       get_url:
         url: https://example.com/lighthouse-static.tar.gz
         dest: /tmp/lighthouse-static.tar.gz
-
     - name: Распаковываем LightHouse
       unarchive:
         src: /tmp/lighthouse-static.tar.gz
         dest: /var/www/html/lighthouse
         remote_src: true
-
     - name: Устанавка Nginx
       yum:
         name: nginx
         state: present
-
     - name: Настройка конфига Nginx
       template:
         src: nginx.conf.j2
@@ -108,13 +105,11 @@
         mode: '0644'
       notify:
         - Restart Nginx
-
     - name: Запуск веб-сервер Nginx
       service:
         name: nginx
         state: started
         enabled: true
-
   handlers:
     - name: Restart Nginx
       service:
