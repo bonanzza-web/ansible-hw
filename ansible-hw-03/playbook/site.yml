@@ -1,6 +1,91 @@
 ---
+#Установка и настройка nginx
+- name: Install Nginx
+  hosts: lighthouse
+#Блок handler который выполняется после всех таск, рестарт службы
+  handlers:
+    - name: start-nginx
+      become: true
+      command: nginx
+      tags: nginx
+    - name: reload-nginx
+      become: true
+      command: nginx -s reload
+      tags: nginx
+# Установка репозиториев
+  tasks:
+    - name: NGINX | Install epel-release
+      become: true
+      ansible.builtin.yum:
+        name: epel-release
+        state: present
+      tags: nginx
+# Установка nginx
+    - name: NGINX | Install NGINX
+      become: true
+      ansible.builtin.yum:
+        name: nginx
+        state: present
+      notify: start-nginx
+      ignore_errors: "{{ ansible_check_mode }}"
+      tags: nginx
+# Создания файла конфигурации lighthouse
+    - name: NGINX | Create file for lighthouse config
+      become: true
+      ansible.builtin.file:
+        path: /etc/nginx/conf.d/lighthouse.conf
+        state: touch
+        mode: 0644
+      tags: nginx
+# Создания файла конфигурации nginx
+    - name: NGINX | Create general config
+      become: true
+      template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/nginx.conf
+        mode: 0644
+      notify: reload-nginx
+      tags: nginx
+#Установка и настройка lighthouse
+- name: Install LightHouse
+  hosts: lighthouse
+#Блок handler который выполняется после всех таск, рестарт службы
+  handlers:
+    - name: reload-nginx
+      become: true
+      command: nginx -s reload
+      tags: lighthouse
+# Установка git
+  pre_tasks:
+    - name: Lighthouse | Install dependencies
+      become: true
+      ansible.builtin.yum:
+        name: git
+        state: present
+      tags: lighthouse
+  tasks:
+# Получения фалов lighthouse с git
+    - name: Lighthouse | Copy from git
+      become: true
+      git:
+        repo: "{{ lighthouse_vcs }}"
+        version: master
+        dest: "{{ lighthouse_location_dir }}"
+      ignore_errors: "{{ ansible_check_mode }}"
+      tags: lighthouse
+# Создания файла конфигурации lighthouse
+    - name: Lighthouse | Create lighthouse config
+      become: true
+      template:
+        src: lighthouse.conf.j2
+        dest: /etc/nginx/conf.d/lighthouse.conf
+        mode: 0644
+      notify: reload-nginx
+      tags: lighthouse
+
 - name: Install Clickhouse
   hosts: clickhouse
+#Блок handler который выполняется после всех таск, рестарт службы
   handlers:
     - name: Start clickhouse service
       become: true
@@ -8,12 +93,17 @@
         name: clickhouse-server
         state: restarted
   tasks:
+#При выполнении tasks и возникновении ошибок задачи по блоку передаются в rescue, далее в always. Always выполняется всегда.
     - block:
         - name: Get clickhouse distrib
+#Получаем дистрибутивы clickhouse из репозитория
           ansible.builtin.get_url:
             url: "https://packages.clickhouse.com/rpm/stable/{{ item }}-{{ clickhouse_version }}.noarch.rpm"
+#Указываем расположение пакета и даем названия
             dest: "./{{ item }}-{{ clickhouse_version }}.rpm"
+#Получаем исполняемые файлы, клиентские и серверные указанные в переменных groups_vars/clickhouse/vars.yml
           with_items: "{{ clickhouse_packages }}"
+#Если в верхней части блока были ошибки, подбираем подходящие пакеты
       rescue:
         - name: Get clickhouse distrib
           ansible.builtin.get_url:
@@ -22,14 +112,18 @@
       always:
         - name: Install clickhouse packages
           become: true
+#Производим установку скачанных пакетов
           ansible.builtin.yum:
             name:
               - clickhouse-common-static-{{ clickhouse_version }}.rpm
               - clickhouse-client-{{ clickhouse_version }}.rpm
               - clickhouse-server-{{ clickhouse_version }}.rpm
+#Запускаем handler
           notify: Start clickhouse service
+#Информируем о выполнении handler
         - name: Flush handlers
           meta: flush_handlers
+#Создаем БД clickhouse
         - name: Create database
           ansible.builtin.command: "clickhouse-client -q 'create database logs;'"
           register: create_db
@@ -37,6 +131,7 @@
           changed_when: create_db.rc == 0
 - name: Install and config Vector
   hosts: vector
+#Блок хэндлера который выполняется после всех таск, рестарт службы
   handlers:
     - name: Start Vector service
       become: true
@@ -44,6 +139,7 @@
         name: vector
         state: restarted
   tasks:
+#Прописываем в hosts ip серверов
     - name: Add clickhouse addresses to /etc/hosts
       become: true
       lineinfile:
@@ -54,11 +150,13 @@
       when: hostvars[item].ansible_host is defined
       with_items: "{{ groups.clickhouse }}"
     - name: Get vector distrib
+#Получаем исполняемые файлы, клиентские и серверные указанные в переменных groups_vars/vector/vars.yml
       ansible.builtin.get_url:
         url: "https://packages.timber.io/vector/latest/vector-{{ vector_version }}.x86_64.rpm"
         dest: "./vector-{{ vector_version }}.x86_64.rpm"
     - name: Install vector package
       become: true
+#Устанавливаем vector
       ansible.builtin.yum:
         name:
           - "./vector-{{ vector_version }}.x86_64.rpm"
@@ -69,6 +167,7 @@
         path: /etc/default/vector
         regexp: 'VECTOR_CONFIG='
         line: VECTOR_CONFIG=/etc/vector/config.yaml
+#Правим конфигурацию из указанной в переменной groups_vars/vector/vars.yml
     - name: Create vector config
       tags: vector_config
       become: true
@@ -78,41 +177,3 @@
           {{ vector_config | to_nice_yaml(indent=2) }}
 
           notify: Start Vector service
-
-- name: Установка и настройка LightHouse
-  hosts: lighthouse
-  become: true
-  tasks:
-    - name: Скачиваем LightHouse
-      get_url:
-        url: https://example.com/lighthouse-static.tar.gz
-        dest: /tmp/lighthouse-static.tar.gz
-    - name: Распаковываем LightHouse
-      unarchive:
-        src: /tmp/lighthouse-static.tar.gz
-        dest: /var/www/html/lighthouse
-        remote_src: true
-    - name: Устанавка Nginx
-      yum:
-        name: nginx
-        state: present
-    - name: Настройка конфига Nginx
-      template:
-        src: nginx.conf.j2
-        dest: /etc/nginx/nginx.conf
-        owner: root
-        group: root
-        mode: '0644'
-      notify:
-        - Restart Nginx
-    - name: Запуск веб-сервер Nginx
-      service:
-        name: nginx
-        state: started
-        enabled: true
-  handlers:
-    - name: Restart Nginx
-      service:
-        name: nginx
-        state: restarted
-
