@@ -224,9 +224,11 @@ vector-01                  : ok=2    changed=0    unreachable=0    failed=1    s
      - clickhouse-client    
      - clickhouse-server    
      - clickhouse-common-static    
-   Переменные vector:    
-   vector_version: "0.29.1-1"    
-   vector_config:    
+
+
+    Переменные vector:    
+    vector_version: "0.29.1-1"    
+    vector_config:    
      sources:    
        dummy_logs:    
          type: demo_logs   
@@ -253,10 +255,13 @@ vector-01                  : ok=2    changed=0    unreachable=0    failed=1    s
      api:    
        enabled: true    
        address: '0.0.0.0:8686'    
-     Переменные lighthouse:    
-     lighthouse_vcs: "https://github.com/VKCOM/lighthouse"    
-     lighthouse_location_dir: "/var/www/lighthouse"    
-4. Сценарии запуска (через теги/роли, если такие есть). Роли будут в следующем задании! Запуск ansible-playbook    
+    
+    
+    Переменные lighthouse:    
+    lighthouse_vcs: "https://github.com/VKCOM/lighthouse"    
+    lighthouse_location_dir: "/var/www/lighthouse"    
+
+    4. Сценарии запуска (через теги/роли, если такие есть). Роли будут в следующем задании! Запуск ansible-playbook    
 
 
 ### Как оформить решение задания
