@@ -219,44 +219,44 @@ vector-01                  : ok=2    changed=0    unreachable=0    failed=1    s
 1. Версия ansible 2.14.3
 2. Плейбук запускает установку clickhouse на один хост, vector на другой lighthouse на третий. Вместе с lighthouse ставится nginx. Плейбук запускается стандартной командой
 3. Переменные clickhouse:
-   clickhouse_version: "22.3.3.44"
-   clickhouse_packages:
-     - clickhouse-client
-     - clickhouse-server
-     - clickhouse-common-static
-   Переменные vector:
-   vector_version: "0.29.1-1"
-   vector_config:
-     sources:
-       dummy_logs:
-         type: demo_logs
-         format: syslog
-         interval: 1
-     transforms:
-       parse_logs:
-         inputs:
-         - dummy_logs
-         source: |-
-           . = parse_syslog!(string!(.message))
-           .timestamp = to_string(.timestamp)
-           .timestamp = slice!(.timestamp, start:0, end: -1)
-         type: remap
-     sinks:
-       to_clickhouse:
-         type: clickhouse
-         inputs:
-           - parse_logs
-         database: logs2
-         endpoint: 'http://clickhouse-01:8123'
-         table: log
-         compression: gzip
-     api:
-       enabled: true
-       address: '0.0.0.0:8686'
-     Переменные lighthouse:
-     lighthouse_vcs: "https://github.com/VKCOM/lighthouse"
-     lighthouse_location_dir: "/var/www/lighthouse"
-4. Сценарии запуска (через теги/роли, если такие есть). Роли будут в следующем задании! Запуск ansible-playbook
+   clickhouse_version: "22.3.3.44"    
+   clickhouse_packages:    
+     - clickhouse-client    
+     - clickhouse-server    
+     - clickhouse-common-static    
+   Переменные vector:    
+   vector_version: "0.29.1-1"    
+   vector_config:    
+     sources:    
+       dummy_logs:    
+         type: demo_logs   
+         format: syslog    
+         interval: 1    
+     transforms:    
+       parse_logs:    
+         inputs:    
+         - dummy_logs    
+         source: |-     
+           . = parse_syslog!(string!(.message))    
+           .timestamp = to_string(.timestamp)    
+           .timestamp = slice!(.timestamp, start:0, end: -1)    
+         type: remap     
+     sinks:    
+       to_clickhouse:    
+         type: clickhouse    
+         inputs:    
+           - parse_logs    
+         database: logs2    
+         endpoint: 'http://clickhouse-01:8123'    
+         table: log    
+         compression: gzip    
+     api:    
+       enabled: true    
+       address: '0.0.0.0:8686'    
+     Переменные lighthouse:    
+     lighthouse_vcs: "https://github.com/VKCOM/lighthouse"    
+     lighthouse_location_dir: "/var/www/lighthouse"    
+4. Сценарии запуска (через теги/роли, если такие есть). Роли будут в следующем задании! Запуск ansible-playbook    
 
 
 ### Как оформить решение задания
