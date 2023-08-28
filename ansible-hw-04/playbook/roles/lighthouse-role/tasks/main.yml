@@ -1,0 +1,26 @@
+---
+# tasks file for lighthouse-role
+
+- name: Lighthouse | Install dependencies
+  become: true
+  ansible.builtin.yum:
+    name: git
+    state: present
+  tags: lighthouse
+
+- name: Lighthouse | Copy from git
+  become: true
+  ansible.builtin.git:
+    repo: "{{ lighthouse_vcs }}"
+    version: master
+    dest: "{{ lighthouse_location_dir }}"
+  ignore_errors: "{{ ansible_check_mode }}"
+  tags: lighthouse
+- name: Lighthouse | Create lighthouse config
+  become: true
+  ansible.builtin.template:
+    src: lighthouse.conf.j2
+    dest: /etc/nginx/conf.d/lighthouse.conf
+    mode: "0644"
+  notify: Reload-nginx
+  tags: lighthouse

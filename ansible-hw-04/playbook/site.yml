@@ -42,112 +42,21 @@
       tags: nginx
 - name: Install LightHouse
   hosts: lighthouse
-  handlers:
-    - name: Reload-nginx
-      become: true
-      ansible.builtin.command: nginx -s reload
-      tags: lighthouse
-  pre_tasks:
-    - name: Lighthouse | Install dependencies
-      become: true
-      ansible.builtin.yum:
-        name: git
-        state: present
-      tags: lighthouse
-  tasks:
-    - name: Lighthouse | Copy from git
-      become: true
-      ansible.builtin.git:
-        repo: "{{ lighthouse_vcs }}"
-        version: master
-        dest: "{{ lighthouse_location_dir }}"
-      ignore_errors: "{{ ansible_check_mode }}"
-      tags: lighthouse
-    - name: Lighthouse | Create lighthouse config
-      become: true
-      ansible.builtin.template:
-        src: lighthouse.conf.j2
-        dest: /etc/nginx/conf.d/lighthouse.conf
-        mode: "0644"
-      notify: Reload-nginx
-      tags: lighthouse
+  
+  roles:
+    - lighthouse-role
+    
+  
 
 - name: Install Clickhouse
   hosts: clickhouse
-  handlers:
-    - name: Start clickhouse service
-      become: true
-      ansible.builtin.service:
-        name: clickhouse-server
-        state: restarted
-  tasks:
-    - block:
-        - name: Get clickhouse distrib
-          ansible.builtin.get_url:
-            url: "https://packages.clickhouse.com/rpm/stable/{{ item }}-{{ clickhouse_version }}.noarch.rpm"
-            dest: "./{{ item }}-{{ clickhouse_version }}.rpm"
-          with_items: "{{ clickhouse_packages }}"
-      rescue:
-        - name: Get clickhouse distrib
-          ansible.builtin.get_url:
-            url: "https://packages.clickhouse.com/rpm/stable/clickhouse-common-static-{{ clickhouse_version }}.x86_64.rpm"
-            dest: "./clickhouse-common-static-{{ clickhouse_version }}.rpm"
+  
+  roles:
+    - clickhouse
 
-    - name: Install clickhouse packages
-      become: true
-      ansible.builtin.yum:
-        name:
-          - clickhouse-common-static-{{ clickhouse_version }}.rpm
-          - clickhouse-client-{{ clickhouse_version }}.rpm
-          - clickhouse-server-{{ clickhouse_version }}.rpm
-      notify: Start clickhouse service
-    - name: Flush handlers
-      ansible.builtin.meta: flush_handlers
-    - name: Create database
-      ansible.builtin.command: "clickhouse-client -q 'create database logs;'"
-      register: create_db
-      failed_when: create_db.rc != 0 and create_db.rc != 82
-      changed_when: create_db.rc == 0
 - name: Install and config Vector
   hosts: vector
-  handlers:
-    - name: Start Vector service
-      become: true
-      ansible.builtin.service:
-        name: vector
-        state: restarted
-  tasks:
-    - name: Add clickhouse addresses to /etc/hosts
-      become: true
-      ansible.builtin.lineinfile:
-        dest: /etc/hosts
-        regexp: '.*{{ item }}$'
-        line: "{{ hostvars[item].ansible_host }} {{ item }}"
-        state: present
-      when: hostvars[item].ansible_host is defined
-      with_items: "{{ groups.clickhouse }}"
-    - name: Get vector distrib
-      ansible.builtin.get_url:
-        url: "https://packages.timber.io/vector/latest/vector-{{ vector_version }}.x86_64.rpm"
-        dest: "./vector-{{ vector_version }}.x86_64.rpm"
-    - name: Install vector package
-      become: true
-      ansible.builtin.yum:
-        name:
-          - "./vector-{{ vector_version }}.x86_64.rpm"
-    - name: Vector config name
-      tags: vector_config
-      become: true
-      ansible.builtin.lineinfile:
-        path: /etc/default/vector
-        regexp: 'VECTOR_CONFIG='
-        line: VECTOR_CONFIG=/etc/vector/config.yaml
-    - name: Create vector config
-      tags: vector_config
-      become: true
-      ansible.builtin.copy:
-        dest: /etc/vector/config.yaml
-        content: |
-          {{ vector_config | to_nice_yaml(indent=2) }}
-
-          notify: Start Vector service
+  
+  roles:
+    - vector-role
+    
